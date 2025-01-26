@@ -285,22 +285,28 @@ app.post("/getNumber", async (req, res)=>{
 	    retObj["IM"] = (durationQuery[0].imDays * rateQuery["Installation Manager"]);
 	}
 	//local labour
-	if(!(durationQuery[0].manLab == 0 && durationQuery[0].electrician == 0 && durationQuery[0].plumber == 0)){ //only make requests if they actually have days to calculate
-	    q = "SELECT plumber, electrician, manualLabour FROM `Countries` WHERE id="+SqlString.escape(durationQuery[0].CID)+";";
-	    var localLabourQuery = JSON.parse(JSON.stringify(await query(q)));
-	    console.log();
-	    retObj["price"] += localLabourQuery[0].plumber * durationQuery[0].plumber;
-	    retObj["price"] += localLabourQuery[0].electrician * durationQuery[0].electrician;
-	    retObj["price"] += localLabourQuery[0].manualLabour * durationQuery[0].manLab;
+	 //only make requests if they actually have days to calculate
+	q = "SELECT plumber, electrician, manualLabour, expenditure FROM `Countries` WHERE id="+SqlString.escape(durationQuery[0].CID)+";";
+	var localLabourQuery = JSON.parse(JSON.stringify(await query(q)));
+	console.log();
+	retObj["price"] += localLabourQuery[0].plumber * durationQuery[0].plumber;
+	retObj["price"] += localLabourQuery[0].electrician * durationQuery[0].electrician;
+	retObj["price"] += localLabourQuery[0].manualLabour * durationQuery[0].manLab;
+	//per diem for RF workers
+	retObj["price"] += durationQuery[0].pmDays * localLabourQuery[0].expenditure;
+	retObj["price"] += durationQuery[0].imDays * localLabourQuery[0].expenditure;
 
-	    if(req.body.verbose == 1 && auth.lvl == 1){
-		retObj["plumber"] = localLabourQuery[0].plumber * durationQuery[0].plumber;
-		retObj["electrician"] = localLabourQuery[0].electrician * durationQuery[0].electrician;
-		retObj["manual labour"] = localLabourQuery[0].manualLabour * durationQuery[0].manLab;
-	    }
-	    
+	if(req.body.verbose == 1 && auth.lvl == 1){
+	    retObj["plumber"] = localLabourQuery[0].plumber * durationQuery[0].plumber;
+	    retObj["electrician"] = localLabourQuery[0].electrician * durationQuery[0].electrician;
+	    retObj["manual labour"] = localLabourQuery[0].manualLabour * durationQuery[0].manLab;
+	    retObj["PM"] += durationQuery[0].pmDays * localLabourQuery[0].expenditure;
+	    retObj["IM"] += durationQuery[0].imDays * localLabourQuery[0].expenditure;
 	    
 	}
+	
+	
+	
     }catch(err){
  	console.error(err);
  	retObj["error"] = "unable to calculate labour data";
