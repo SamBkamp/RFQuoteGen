@@ -215,12 +215,15 @@ app.post("/getNumber", async (req, res)=>{
     
     for(key in tanksData){ //calculate cost per tank (stand, acrylic, skids etc)
  	//console.log(tanksData[key]);	
- 	var q = "SELECT price FROM `Skids` WHERE id="+SqlString.escape(tanksData[key].SID)+";";
+ 	var q = "SELECT name, price FROM `Skids` WHERE id="+SqlString.escape(tanksData[key].SID)+";";
  	
  	try{ //get price for tank skid
  	    var dbquery = await query(q); //TODO add clause to check if specific SID was already queried in this order to avoid querying the same data twice
  	    dbquery = JSON.parse(JSON.stringify(dbquery));
- 	    for(jey in dbquery) retObj["price"] += dbquery[jey].price;
+ 	    for(jey in dbquery){
+		retObj["price"] += dbquery[jey].price;
+		if(req.body.verbose == 1 && auth.lvl == 1) retObj[dbquery[jey].name] = dbquery[jey].price;
+	    }
  	}
  	catch(err){
  	    console.error(err);
@@ -230,12 +233,13 @@ app.post("/getNumber", async (req, res)=>{
 	
  	
  	try{// get price for tank material volume
- 	    var priceConstant = 100; //PRICE in USD per cm^3 of material 
+ 	    var priceConstant = 100; //PRICE in USD per cm^3 of material TODO: this has to be set externally or something, db perchance
  	    var longPanel = tanksData[key].length * tanksData[key].height * (tanksData[key].thickness/10);
  	    var shortPanel = tanksData[key].height * tanksData[key].depth * (tanksData[key].thickness/10);
  	    var bottomPanel = tanksData[key].length * tanksData[key].depth * (tanksData[key].thickness/10);
  	    var totalVolume = (longPanel*2) + (shortPanel*2) + bottomPanel;
  	    retObj["price"] += (totalVolume * priceConstant);
+	    if(req.body.verbose == 1 && auth.lvl == 1) retObj["tank"+key] = (totalVolume * priceConstant);
  	}catch(err){
  	    console.error(err);
  	    retObj["error"] = "unable to calculate tank material volume";
@@ -245,11 +249,12 @@ app.post("/getNumber", async (req, res)=>{
  	try{//calculate price for stand material *length*
  	    var q = "SELECT * FROM `StandInstance` INNER JOIN `Stands` ON StandInstance.StID = Stands.id WHERE StandInstance.TID="+SqlString.escape(tanksData[key].id)+";";
  	    var dbquery = JSON.parse(JSON.stringify(await query(q)));
- 	    console.log(dbquery);
+ 	    
  	    //extruded alu stand is calculated as a wireframe box of the volume given
  	    //also assuming theres 0 > x <= 1 stands per tank (1 stand max, 1 stand min)
  	    var box = (dbquery[0].length*4) + (dbquery[0].height*4) + (dbquery[0].depth*4)
  	    retObj["price"] += (box*dbquery[0].price);
+	    if(req.body.verbose == 1 && auth.lvl == 1) retObj["stand"+key] = (box*dbquery[0].price);
  	    
  	}catch(err){
  	    console.error(err);
@@ -273,14 +278,19 @@ app.post("/getNumber", async (req, res)=>{
  	}, {}); //{} is initial value of acc 
 	
  	//id is PK so durationQuery will only ever return 1 row
- 	retObj["price"] += (durationQuery[0].pmDays * rateQuery["Project Manager"]);
+ 	retObj["price"] += (durationQuery[0].pmDays * rateQuery["Project Manager"]);	
  	retObj["price"] += (durationQuery[0].imDays * rateQuery["Installation Manager"]);
+	if(req.body.verbose == 1 && auth.lvl == 1){
+	    retObj["PM"] = (durationQuery[0].pmDays * rateQuery["Project Manager"]);
+	    retObj["IM"] = (durationQuery[0].imDays * rateQuery["Installation Manager"]);
+	}
     }catch(err){
  	console.error(err);
  	retObj["error"] = "unable to calculate labour data";
  	return res.send(retObj);
     }
-    
+
+    console.log(req.body.verbose == 1 && auth.lvl == 1)
     res.send(retObj);
 });
 
@@ -300,7 +310,8 @@ function query(q){
 }
 
 //function to authenticate cookies with requests
-//returns obj {auth, privilege} where auth = 1 authenticated, 0 = not authenticated and privilege refers to their privilege lvl in the db
+//returns obj {auth, privilege} where auth >= 1 authenticated, 0 = not authenticated and privilege refers to their privilege lvl in the db
+//lower number == higher privilege
 function authenticate(username, password){
     
     if(!(username && password)) return {auth:0, lvl:0};

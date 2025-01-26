@@ -57,8 +57,8 @@ $("#sendCalc").on("click", function(){
 	   });
 });
 
-function getTotal(oid = 59){
-    $.post("/process/getNumber", {data:oid},
+function getTotal(v = 0, oid = 59){
+    $.post("/process/getNumber", {data:oid, verbose:v},
 	   function(data, status){
 	       console.log(data);
 	   });
