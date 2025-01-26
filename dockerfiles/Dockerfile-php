@@ -1,0 +1,6 @@
+FROM php:8.0-apache	
+USER 0:1004
+RUN usermod -aG 1004 www-data && newgrp 1004
+WORKDIR /var/www/html
+RUN docker-php-ext-install mysqli && docker-php-ext-enable mysqli
+EXPOSE 80
