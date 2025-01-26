@@ -15,3 +15,6 @@ db/sys
 db/undo001
 db/undo002
 db/undo003
+db/ddl_recovery.log
+db/ibtmp1
+db/tc.log
