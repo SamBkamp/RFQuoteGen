@@ -1,8 +1,6 @@
 var mysql = require('mysql');
 var express = require('express');
 var cookieParser = require('cookie-parser');
-var crypto = require("crypto");
-var SqlString = require('sqlstring');
 var db = require("./controllers/db.js");
 var routing = require("./router.js");
 

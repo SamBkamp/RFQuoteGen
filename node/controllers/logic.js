@@ -1,15 +1,15 @@
-var db = require("./db.js");
+var db = require("./db.js")
+var SqlString = require('sqlstring');
 
-exports.test = async (req, res)=>{
+var test = async (req, res)=>{
     res.send("elmao");
 }
 
-exports.getOptions = async (req, res)=>{
+var getOptions = async (req, res)=>{
     
     
     var auth = await db.authenticate(req.cookies.username, req.cookies.userauth);
     
-    console.log("AUTH: " + auth.auth);
     
     if(auth.auth == 0){
  	res.send("authentication failure");
@@ -27,7 +27,7 @@ var getNumber = async (req, res)=>{
     res.setHeader('content-type', 'application/json');
     
     //check cookie auth
-    var auth = await authenticate(req.cookies.username, req.cookies.userauth);   
+    var auth = await db.authenticate(req.cookies.username, req.cookies.userauth);   
     if(auth.auth == 0){
  	return res.send({"error": "authentication failure"});	
     }
@@ -112,8 +112,7 @@ var getNumber = async (req, res)=>{
  	}, {}); //{} is initial value of acc 
 	
  	//id is PK so durationQuery will only ever return 1 row
- 	retObj["price"] += (durationQuery[0].pmDays * rateQuery["Project Manager"]);	
- 	retObj["price"] += (durationQuery[0].imDays * rateQuery["Installation Manager"]);
+ 	retObj["price"] += (durationQuery[0].pmDays * rateQuery["Project Manager"]) + (durationQuery[0].imDays * rateQuery["Installation Manager"]);	
 	if(req.body.verbose == 1 && auth.lvl == 1){
 	    retObj["PM"] = (durationQuery[0].pmDays * rateQuery["Project Manager"]);
 	    retObj["IM"] = (durationQuery[0].imDays * rateQuery["Installation Manager"]);
@@ -122,13 +121,13 @@ var getNumber = async (req, res)=>{
 	//only make requests if they actually have days to calculate
 	q = "SELECT plumber, electrician, manualLabour, expenditure FROM `Countries` WHERE id="+SqlString.escape(durationQuery[0].CID)+";";
 	var localLabourQuery = JSON.parse(JSON.stringify(await db.query(q)));
-	console.log();
-	retObj["price"] += localLabourQuery[0].plumber * durationQuery[0].plumber;
-	retObj["price"] += localLabourQuery[0].electrician * durationQuery[0].electrician;
-	retObj["price"] += localLabourQuery[0].manualLabour * durationQuery[0].manLab;
-	//per diem for RF workers
-	retObj["price"] += durationQuery[0].pmDays * localLabourQuery[0].expenditure;
-	retObj["price"] += durationQuery[0].imDays * localLabourQuery[0].expenditure;
+	
+	retObj["price"] += localLabourQuery[0].plumber * durationQuery[0].plumber +
+	    localLabourQuery[0].electrician * durationQuery[0].electrician +
+	    localLabourQuery[0].manualLabour * durationQuery[0].manLab +
+	    durationQuery[0].pmDays * localLabourQuery[0].expenditure +
+	    durationQuery[0].imDays * localLabourQuery[0].expenditure;
+	
 
 	if(req.body.verbose == 1 && auth.lvl == 1){
 	    retObj["plumber"] = localLabourQuery[0].plumber * durationQuery[0].plumber;
@@ -156,7 +155,7 @@ var quoteGen = async (req, res)=>{
 
      	res.setHeader('content-type', 'application/json');
 	
- 	var auth = await authenticate(req.cookies.username, req.cookies.userauth);
+ 	var auth = await db.authenticate(req.cookies.username, req.cookies.userauth);
  	var retObj = {};
  	
  	if(auth.auth == 0){
@@ -272,3 +271,5 @@ var quoteGen = async (req, res)=>{
 
 exports.quoteGen = quoteGen;
 exports.getNumber = getNumber;
+exports.getOptions = getOptions;
+exports.test = test;

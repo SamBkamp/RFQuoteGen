@@ -34,7 +34,6 @@ var authenticate = async (username, password)=>{
  	
  	
  	if(res[key].email == username && hString == password){
- 	    console.log("AUTHENTICATED AS "+ res[key].email);
  	    return {auth: 1, lvl:res[key].privilege};
  	}
     }
