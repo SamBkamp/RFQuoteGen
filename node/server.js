@@ -3,7 +3,7 @@ var express = require('express');
 var cookieParser = require('cookie-parser');
 var crypto = require("crypto");
 var SqlString = require('sqlstring');
-
+var db = require("./controllers/db.js");
 
 const app = express();
 app.use(cookieParser());
@@ -12,18 +12,15 @@ app.use(express.urlencoded({extended: true}));
 const port = 81;
  
 //create connection to db
-var con = mysql.createConnection({
+
+var connData = {
     host: "db",
     user: process.env.NODE_DB_USER,
     password: process.env.NODE_DB_PW,
     database: "RedFin"
-});
+}
 
-con.connect(function(err){   
-    if(err) throw err;
-    console.log("Database connected");         
-});
-
+db.connectDB(connData);
 
 
 
@@ -44,24 +41,11 @@ app.all("/get-:value", async (req, res) =>{
  	res.end();
     }
     
-    var query = "SELECT id, name FROM " + req.params.value;
-    
-    console.log(query);
-    
-    con.query(query, (err, result, fields)=>{	
- 	if(err){
- 	    res.send("Error in SQL request");
- 	    console.error(err);
- 	    res.end();
- 	}else{
- 	    result = JSON.stringify(result);
- 	    res.send(result);
- 	    res.end();
- 	    
- 	}
- 	
-    });
-    
+    var q = "SELECT id, name FROM " + req.params.value; //TODO: make this safe
+
+    var test = await db.query(q);
+    res.send(JSON.stringify(test));
+        
 });
 
 app.route("/quotegen")
@@ -119,7 +103,7 @@ app.route("/quotegen")
  	var success = "";
  	retObj["error"] = "";
  	try{ //INSERT QUOTE
- 	    var t = await query(genOrder);
+ 	    var t = await db.query(genOrder);
  	    success +=  "Quotes Success";
  	    insertID = JSON.parse(JSON.stringify(t)).insertId;
  	    retObj["oid"] = insertID;
@@ -159,7 +143,7 @@ app.route("/quotegen")
  	    var tinsertID;
  	    
  	    try{ //INSERT TANK(S)
- 		var tQuery = await query(tankOrder);
+ 		var tQuery = await db.query(tankOrder);
  		success +=", Tanks Success";
  		tinsertID = JSON.parse(JSON.stringify(tQuery)).insertId;		
  		
@@ -172,7 +156,7 @@ app.route("/quotegen")
 	    
  	    try{ //INSERT STAND
  		var standQuery = "INSERT INTO `StandInstance` (`StID`, `TID`, `length`, `height`, `depth`) VALUES ("+SqlString.escape(standDimension[3])+", "+SqlString.escape(tinsertID)+", "+SqlString.escape(standDimension[1])+", "+SqlString.escape(standDimension[0])+", "+SqlString.escape(standDimension[2])+")";
- 		await query(standQuery);
+ 		await db.query(standQuery);
  		success += " Stand Success";
  	    }catch(err){
  		console.error(err);
@@ -202,7 +186,7 @@ app.post("/getNumber", async (req, res)=>{
     var tanksData;
     retObj["price"] = 0;
     try{//get tanks 
- 	var tQuery = await query(q);
+ 	var tQuery = await db.query(q);
  	tanksData = JSON.parse(JSON.stringify(tQuery));
  	
  	
@@ -218,7 +202,7 @@ app.post("/getNumber", async (req, res)=>{
  	var q = "SELECT name, price FROM `Skids` WHERE id="+SqlString.escape(tanksData[key].SID)+";";
  	
  	try{ //get price for tank skid
- 	    var dbquery = await query(q); //TODO add clause to check if specific SID was already queried in this order to avoid querying the same data twice
+ 	    var dbquery = await db.query(q); //TODO add clause to check if specific SID was already queried in this order to avoid querying the same data twice
  	    dbquery = JSON.parse(JSON.stringify(dbquery));
  	    for(jey in dbquery){
 		retObj["price"] += dbquery[jey].price;
@@ -248,7 +232,7 @@ app.post("/getNumber", async (req, res)=>{
 	
  	try{//calculate price for stand material *length*
  	    var q = "SELECT * FROM `StandInstance` INNER JOIN `Stands` ON StandInstance.StID = Stands.id WHERE StandInstance.TID="+SqlString.escape(tanksData[key].id)+";";
- 	    var dbquery = JSON.parse(JSON.stringify(await query(q)));
+ 	    var dbquery = JSON.parse(JSON.stringify(await db.query(q)));
  	    
  	    //extruded alu stand is calculated as a wireframe box of the volume given
  	    //also assuming theres 0 > x <= 1 stands per tank (1 stand max, 1 stand min)
@@ -267,10 +251,10 @@ app.post("/getNumber", async (req, res)=>{
     
     try{ //get labour costs
  	var q = "SELECT pmDays, imDays, manLab, electrician, plumber, CID FROM `Quotes` WHERE id="+SqlString.escape(req.body.data)+";";
- 	var durationQuery = JSON.parse(JSON.stringify(await query(q))); //for labour days
+ 	var durationQuery = JSON.parse(JSON.stringify(await db.query(q))); //for labour days
  	
  	q = "SELECT pName, rate FROM RFStaff";
- 	var rateQuery = JSON.parse(JSON.stringify(await query(q))); //for labour rate
+ 	var rateQuery = JSON.parse(JSON.stringify(await db.query(q))); //for labour rate
 	
  	rateQuery = rateQuery.reduce((acc, curr)=>{ //remove outer array shell
  	    acc[curr.pName] = curr.rate; //curr is the current element of rateQuery
@@ -287,7 +271,7 @@ app.post("/getNumber", async (req, res)=>{
 	//local labour
 	 //only make requests if they actually have days to calculate
 	q = "SELECT plumber, electrician, manualLabour, expenditure FROM `Countries` WHERE id="+SqlString.escape(durationQuery[0].CID)+";";
-	var localLabourQuery = JSON.parse(JSON.stringify(await query(q)));
+	var localLabourQuery = JSON.parse(JSON.stringify(await db.query(q)));
 	console.log();
 	retObj["price"] += localLabourQuery[0].plumber * durationQuery[0].plumber;
 	retObj["price"] += localLabourQuery[0].electrician * durationQuery[0].electrician;
@@ -335,38 +319,29 @@ function query(q){
 //function to authenticate cookies with requests
 //returns obj {auth, privilege} where auth >= 1 authenticated, 0 = not authenticated and privilege refers to their privilege lvl in the db
 //lower number == higher privilege
-function authenticate(username, password){
+async function authenticate(username, password){
     
     if(!(username && password)) return {auth:0, lvl:0};
+
+    var q = "SELECT * FROM users WHERE email = " + SqlString.escape(username) + ";";
+    var res = await db.query(q);
+    res = JSON.parse(JSON.stringify(res)); //turns annoying sql object into json
     
-    return new Promise((resolve, reject) => {
- 	con.query("SELECT * FROM users WHERE email = '" + username + "'",   (err, result, fields) => {	
- 	    
- 	    if(err) return reject(err);
- 	    if(result.length < 1)  resolve({auth:0, lvl:0});
- 	    
- 	    result = JSON.parse(JSON.stringify(result)); //turns annoying sql object into json
- 	    
- 	    for(var key in result){
- 		var hash = crypto.createHash("sha256");
- 		var hString = hash.update(result[key].password).digest("hex");
- 		
- 		
- 		if(result[key].email == username && hString == password){
- 		    console.log("AUTHENTICATED AS "+ result[key].email);
- 		    resolve({auth: 1, lvl:result[key].privilege});
- 		}
- 	    }
- 	    
- 	    
- 	    resolve({auth:0, lvl:0});
- 	    
- 	});
+    for(var key in res){
+ 	var hash = crypto.createHash("sha256");
+ 	var hString = hash.update(res[key].password).digest("hex");
  	
-	
-	
-    });
+ 	
+ 	if(res[key].email == username && hString == password){
+ 	    console.log("AUTHENTICATED AS "+ res[key].email);
+ 	    return {auth: 1, lvl:res[key].privilege};
+ 	}
+    }
     
+    
+    return {auth:0, lvl:0};
+
+        
 }
 
 /*
