@@ -18,4 +18,5 @@ db/undo003
 db/ddl_recovery.log
 db/ibtmp1
 db/tc.log
+db/aria_log.00000001
 PAT
