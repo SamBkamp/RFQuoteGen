@@ -7,6 +7,16 @@ $( document ).ready(()=>{ //init function
 })
 
 
+function formattedNum(num){ //turns an int into a formatted string (2300 -> 2,300)
+    var finalString = "";
+    num = num.toString();
+    for(var i = num.length-1; i >= 0; i--){
+	finalString = num[i] + finalString;
+	if((i-num.length)%3 == 0 && i > 0) finalString = "," + finalString;
+    }
+    return finalString;
+}
+
 
 var returnModal  = new bootstrap.Modal(document.getElementById('returnModal'), {
   keyboard: false
@@ -61,6 +71,9 @@ function getTotal(v = 0, oid = 59){
     $.post("/process/getNumber", {data:oid, verbose:v},
 	   function(data, status){
 	       console.log(data);
+	       var n = formattedNum(data["price"]);
+	       $("#modalMain").text(n);
+	       returnModal.toggle();
 	   });
 }
 
