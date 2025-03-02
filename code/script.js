@@ -14,6 +14,7 @@ function formattedNum(num){ //turns an int into a formatted string (2300 -> 2,30
 	finalString = num[i] + finalString;
 	if((i-num.length)%3 == 0 && i > 0) finalString = "," + finalString;
     }
+    finalString += ".00"
     return finalString;
 }
 
@@ -72,7 +73,8 @@ function getTotal(v = 0, oid = 59){
 	   function(data, status){
 	       console.log(data);
 	       var n = formattedNum(data["price"]);
-	       $("#modalMain").text(n);
+	       var msg = "<p>Total for quote "+data["order"]+": </p><br><h5>USD " + n+"</h5>";
+	       $("#modalMain").html(msg);
 	       returnModal.toggle();
 	   });
 }
