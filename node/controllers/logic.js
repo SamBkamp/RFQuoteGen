@@ -1,5 +1,6 @@
 var db = require("./db.js")
 var SqlString = require('sqlstring');
+const crypto = require("crypto");
 
 var test = async (req, res)=>{
     res.send("elmao");
@@ -8,7 +9,7 @@ var test = async (req, res)=>{
 var getOptions = async (req, res)=>{
     
     
-    var auth = await db.authenticate(req.cookies.username, req.cookies.userauth);
+    var auth = await db.authenticateCookie(req.cookies.username, req.cookies.userauth);
     
     
     if(auth.auth == 0){
@@ -27,7 +28,7 @@ var getNumber = async (req, res)=>{
     res.setHeader('content-type', 'application/json');
     
     //check cookie auth
-    var auth = await db.authenticate(req.cookies.username, req.cookies.userauth);   
+    var auth = await db.authenticateCookie(req.cookies.username, req.cookies.userauth);   
     if(auth.auth == 0){
  	return res.send({"error": "authentication failure"});	
     }
@@ -67,7 +68,7 @@ var getNumber = async (req, res)=>{
 	
  	
  	try{// get price for tank material volume
- 	    var priceConstant = 100; //PRICE in USD per cm^3 of material TODO: this has to be set externally or something, db perchance
+ 	    var priceConstant = 10; //PRICE in USD per cm^3 of material TODO: this has to be set externally or something, db perchance
  	    var longPanel = tanksData[key].length * tanksData[key].height * (tanksData[key].thickness/10);
  	    var shortPanel = tanksData[key].height * tanksData[key].depth * (tanksData[key].thickness/10);
  	    var bottomPanel = tanksData[key].length * tanksData[key].depth * (tanksData[key].thickness/10);
@@ -155,7 +156,7 @@ var quoteGen = async (req, res)=>{
 
      	res.setHeader('content-type', 'application/json');
 	
- 	var auth = await db.authenticate(req.cookies.username, req.cookies.userauth);
+ 	var auth = await db.authenticateCookie(req.cookies.username, req.cookies.userauth);
  	var retObj = {};
  	
  	if(auth.auth == 0){
@@ -269,7 +270,49 @@ var quoteGen = async (req, res)=>{
 
 }
 
+var main = async (req, res) => {
+    var auth = await db.authenticateCookie(req.cookies.username, req.cookies.userauth);   
+    if(auth.auth == 0){
+ 	return res.redirect("/login");
+    }
+    res.render("index")
+}
+
+var loginPage = (req, res) => {
+    return res.render("login/index");
+}
+
+var loginData = async (req, res) =>{
+    var auth = await db.authenticate(req.body.email, req.body.pw);
+
+    if(auth){
+	res.cookie("username", req.body.email, { maxAge: 900000, httpOnly: true });
+	res.cookie("userauth", crypto.createHash("sha256").update(auth).digest("hex"), { maxAge: 900000, httpOnly: true });
+	res.send("verified");
+    }
+    else res.send(auth);
+        
+}
+
+var admin = async (req, res)=>{
+    var auth = await db.authenticateCookie(req.cookies.username, req.cookies.userauth);   
+    if(auth.auth < 2){
+ 	return res.redirect(403, "/admin/login");
+    }
+
+    res.render("admin/index");
+}
+
+var adminLogin = (req, res)=>{
+    res.render("admin/login");
+}
+
 exports.quoteGen = quoteGen;
 exports.getNumber = getNumber;
 exports.getOptions = getOptions;
 exports.test = test;
+exports.main = main;
+exports.loginPage = loginPage;
+exports.loginData = loginData;
+exports.admin = admin;
+exports.adminLogin = adminLogin;

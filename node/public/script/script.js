@@ -56,7 +56,7 @@ $("#sendCalc").on("click", function(){
     
     var stringedData = JSON.stringify(dataToSend);
     
-    $.post("/process/quotegen",
+    $.post("/quotegen",
 	   {
 	       data: stringedData,
 	       test: true //REMOVE IN PROD LOL
@@ -69,7 +69,7 @@ $("#sendCalc").on("click", function(){
 });
 
 function getTotal(v = 0, oid = 59){
-    $.post("/process/getNumber", {data:oid, verbose:v},
+    $.post("/getNumber", {data:oid, verbose:v},
 	   function(data, status){
 	       console.log(data);
 	       var n = formattedNum(data["price"]);
@@ -85,7 +85,7 @@ function genPDF(){
 
 function getItems(name, element){
     element.html("");
-    $.post("/process/get-"+name,
+    $.post("/get-"+name,
 
 	   function(data, status){
 	       var repData = JSON.parse(data);

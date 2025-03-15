@@ -20,21 +20,38 @@ var query = (q)=>{ //promise'd sql query
     });
 }
 
-var authenticate = async (username, password)=>{
+var authenticate = async(username, password)=>{
     
-    if(!(username && password)) return {auth:0, lvl:0};
+    if(!(username && password)) return false;
 
     var q = "SELECT * FROM users WHERE email = " + SqlString.escape(username) + ";";
     var res = await query(q);
 
     
     for(var key in res){
- 	var hash = crypto.createHash("sha256");
- 	var hString = hash.update(res[key].password).digest("hex");
- 	
- 	
- 	if(res[key].email == username && hString == password){
- 	    return {auth: 1, lvl:res[key].privilege};
+	var hash = crypto.createHash("sha256").update(password).digest("hex") ;			
+ 	if(res[key].email == username && res[key].password == hash){
+ 	    return hash;
+ 	}
+    }
+    
+    
+    return false;
+
+}
+
+
+var authenticateCookie = async (username, password)=>{
+
+    if(!(username && password)) return {auth:0, lvl:0};
+
+    var q = "SELECT * FROM users WHERE email = " + SqlString.escape(username) + ";";
+    var res = await query(q);
+    
+    for(var key in res){
+	var hash = crypto.createHash("sha256").update(res[key].password).digest("hex") ;		
+ 	if(res[key].email == username && hash == password){
+ 	    return {auth: 1, lvl: res[key].privilege};
  	}
     }
     
@@ -46,3 +63,4 @@ var authenticate = async (username, password)=>{
 exports.connectDB = connectDB;
 exports.query = query;
 exports.authenticate = authenticate;
+exports.authenticateCookie = authenticateCookie;

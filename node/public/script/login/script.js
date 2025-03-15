@@ -16,7 +16,7 @@ $(document).on("keydown", function(event){
 
 function loginSend(){
     $("#loginSpinner").show();
-    $.post("data.php",
+    $.post("/loginData",
 	   {
 	       email: $("#emailField").val(),
 	       pw: $("#pwField").val()

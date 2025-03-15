@@ -5,10 +5,13 @@ var db = require("./controllers/db.js");
 var routing = require("./router.js");
 
 const app = express();
+app.set('view engine', 'ejs');
+app.use(express.static(__dirname + '/public'));
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 app.use("/", routing);
+
 const port = 81;
  
 //create connection to db
