@@ -16,7 +16,7 @@ $(document).on("keydown", function(event){
 
 function loginSend(){
     $("#loginSpinner").show();
-    $.post("data.php",
+    $.post("/admin/login-data",
 	   {
 	       email: $("#emailField").val(),
 	       pw: $("#pwField").val()
@@ -24,7 +24,8 @@ function loginSend(){
 	   function(data, status){
 	       $("#loginSpinner").hide();	     
 	       if(data == "verified"){
-		   window.location.replace("/admin");
+		   console.log('erm');
+		   //window.location.replace("/admin");
 	       }else{
 		   $("#responseArea").text("Incorrect username/password combination");
 		   $("#pwField").addClass("is-invalid");
