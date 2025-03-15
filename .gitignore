@@ -2,8 +2,8 @@ uploadCode.sh
 **~
 node/node_modules
 env
-db/**
-db
+db/RedFin
+db/RedFin/COassoc.frm
 db/aria_log_control
 db/ddl_recovery-backup.log
 db/ib_buffer_pool
