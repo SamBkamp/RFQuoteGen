@@ -6,17 +6,14 @@ var test = async (req, res)=>{
     res.send("elmao");
 }
 
-var getOptions = async (req, res)=>{
-    
-    
-    var auth = await db.authenticateCookie(req.cookies.username, req.cookies.userauth);
-    
-    
-    if(auth.auth == 0){
+var getOptions = async (req, res)=>{        
+    var auth = await db.authenticate(req.cookies.username, req.cookies.userauth, true);
+        
+    if(!auth){
  	res.send("authentication failure");
     }
     
-    var q = "SELECT id, name FROM " + req.params.value; //TODO: make this safe
+    var q = SqlString.format("SELECT id, name FROM ??", [req.params.value]);
 
     var test = await db.query(q);
     res.send(JSON.stringify(test));
@@ -28,8 +25,8 @@ var getNumber = async (req, res)=>{
     res.setHeader('content-type', 'application/json');
     
     //check cookie auth
-    var auth = await db.authenticateCookie(req.cookies.username, req.cookies.userauth);   
-    if(auth.auth == 0){
+    var auth = await db.authenticate(req.cookies.username, req.cookies.userauth, true);   
+    if(!auth){
  	return res.send({"error": "authentication failure"});	
     }
     
@@ -38,10 +35,7 @@ var getNumber = async (req, res)=>{
     retObj["price"] = 0;
     try{//get tanks 
  	var tQuery = await db.query(q);
- 	tanksData = JSON.parse(JSON.stringify(tQuery));
- 	
- 	
- 	
+ 	tanksData = JSON.parse(JSON.stringify(tQuery)); 	 	 	
     }catch(err){
  	console.error(err);
  	retObj["error"] = "can't get Tank";
@@ -156,15 +150,13 @@ var quoteGen = async (req, res)=>{
 
      	res.setHeader('content-type', 'application/json');
 	
- 	var auth = await db.authenticateCookie(req.cookies.username, req.cookies.userauth);
+    var auth = await db.authenticate(req.cookies.username, req.cookies.userauth, true);
  	var retObj = {};
  	
- 	if(auth.auth == 0){
+ 	if(!auth){
  	    retObj["error"] = "authentication failure";
  	    return res.send(retObj);	    
- 	}
-	
- 	
+ 	}	 	
 	
  	var b = JSON.parse(req.body.data); //TODO: handle JSON parsing error, atm it just crashes the server ijbol
  	var test = JSON.parse(req.body.test);
@@ -271,8 +263,8 @@ var quoteGen = async (req, res)=>{
 }
 
 var main = async (req, res) => {
-    var auth = await db.authenticateCookie(req.cookies.username, req.cookies.userauth);   
-    if(auth.auth == 0){
+    var auth = await db.authenticate(req.cookies.username, req.cookies.userauth, true);   
+    if(!auth){
  	return res.redirect("/login");
     }
     res.render("index")
@@ -282,12 +274,12 @@ var loginPage = (req, res) => {
     return res.render("login/index");
 }
 
-var loginData = async (req, res) =>{
-    var auth = await db.authenticate(req.body.email, req.body.pw);
+var loginData = async (req, res) =>{ //for non admin dash
+    var auth = await db.authenticate(req.body.email, req.body.pw, false);
 
     if(auth){
 	res.cookie("username", req.body.email, { maxAge: 900000, httpOnly: true });
-	res.cookie("userauth", crypto.createHash("sha256").update(auth).digest("hex"), { maxAge: 900000, httpOnly: true });
+	res.cookie("userauth", db.hashText(db.hashText(req.body.pw)), { maxAge: 900000, httpOnly: true });
 	res.send("verified");
     }
     else res.send(auth);
@@ -295,9 +287,9 @@ var loginData = async (req, res) =>{
 }
 
 var admin = async (req, res)=>{
-    var auth = await db.authenticateCookie(req.cookies.username, req.cookies.userauth);   
-    if(auth.auth < 2){
- 	return res.redirect(403, "/admin/login");
+    var auth = await db.authenticate(req.cookies.username, req.cookies.userauth, true);   
+    if(!auth || auth.lvl > 2){
+ 	return res.redirect("/admin/login");
     }
 
     res.render("admin/index");
@@ -305,6 +297,17 @@ var admin = async (req, res)=>{
 
 var adminLogin = (req, res)=>{
     res.render("admin/login");
+}
+
+var adminLoginData = async (req, res) => {
+    var auth = await db.authenticate(req.body.email, req.body.pw, false);
+
+    if(auth && auth.lvl < 2){
+	res.cookie("username", req.body.email, { maxAge: 900000, httpOnly: true });
+	res.cookie("userauth", db.hashText(db.hashText(req.body.pw)), { maxAge: 900000, httpOnly: true });
+	res.send("verified");
+    }
+    else res.send(false);
 }
 
 exports.quoteGen = quoteGen;
@@ -316,3 +319,4 @@ exports.loginPage = loginPage;
 exports.loginData = loginData;
 exports.admin = admin;
 exports.adminLogin = adminLogin;
+exports.adminLoginData = adminLoginData;

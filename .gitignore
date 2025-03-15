@@ -2,7 +2,7 @@ uploadCode.sh
 **~
 node/node_modules
 env
-db/*
+db/**
 db
 db/aria_log_control
 db/ddl_recovery-backup.log

@@ -11,5 +11,6 @@ router.get("/login", logicController.loginPage);
 router.post("/loginData", logicController.loginData);
 router.get("/admin", logicController.admin);
 router.get("/admin/login", logicController.adminLogin);
+router.post("/admin/login-data", logicController.adminLoginData);
 
 module.exports = router;
