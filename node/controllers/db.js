@@ -24,8 +24,8 @@ var hashText = (t) => { //helper for clarity
     return crypto.createHash("sha256").update(t).digest("hex");
 }
 
-var authenticate = async (username, password, cookie) => {    
-    if(!(username && password)) return false;
+var authenticate = async (username, password, cookie) => {
+    if(!(Boolean(username && password))) return false;
     
     var q = "SELECT * FROM users WHERE email = " + SqlString.escape(username) + ";";
     var res = await query(q);
@@ -34,13 +34,12 @@ var authenticate = async (username, password, cookie) => {
 	//if this is cookie auth, db stored pw has to be hashed again, if its plaintext auth then the plaintext has to be hashed
 	var dbPassword = cookie ? hashText(res[key].password) : res[key].password;
 	var userPassword = cookie ? password : hashText(password);
-
+	
 	if(res[key].email = username && dbPassword == userPassword){
-	    return {lvl: res[key].priviliege}
+	    return {lvl: res[key].privilege}
 	}
 	console.log(`expected ${dbPassword} got ${userPassword}`);
     }
-
     return false;
     
 }
