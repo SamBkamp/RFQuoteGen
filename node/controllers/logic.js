@@ -292,7 +292,7 @@ var admin = async (req, res)=>{
  	return res.redirect("/admin/login");
     }
 
-    res.render("admin/index");
+    res.render("admin/index", {name: req.cookies.username});
 }
 
 var adminLogin = (req, res)=>{
@@ -301,13 +301,99 @@ var adminLogin = (req, res)=>{
 
 var adminLoginData = async (req, res) => {
     var auth = await db.authenticate(req.body.email, req.body.pw, false);
-
+    
     if(auth && auth.lvl < 2){
 	res.cookie("username", req.body.email, { maxAge: 900000, httpOnly: true });
 	res.cookie("userauth", db.hashText(db.hashText(req.body.pw)), { maxAge: 900000, httpOnly: true });
 	res.send("verified");
     }
     else res.send(false);
+}
+
+var adminDashData = async (req, res) => {
+    var auth = await db.authenticate(req.cookies.username, req.cookies.userauth, true);
+    //    var q = SqlString.format("SELECT id, name FROM ??", [req.params.value]);
+    
+    if(auth && auth.lvl < 2){
+	var q = SqlString.format("SELECT id, date, email, privilege FROM ??", [req.params.value]);
+	try{
+	    var d = await db.query(q);
+	    console.log(d);
+	    res.setHeader("content-type", "text/json");
+	    return res.send(d);
+	}catch (err){
+	    console.error(err);
+	    return res.send({error: "DB error"});
+	}
+    }
+
+    return res.send({error: "invalid auth"});
+};
+
+
+var generateUserLink = async (req, res) => {
+    var auth = await db.authenticate(req.cookies.username, req.cookies.userauth, true);
+
+    if(auth && auth.lvl < 2){
+	var d = new Date();
+	var q = SqlString.format("INSERT INTO invitelinks (privilege, date) VALUES(?, ?)", [req.body.role, `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`]);
+	try {
+	    var query = await db.query(q);
+	    return res.send(`${query.insertId.toString(16)}`)
+	}catch (err){
+	    console.error(err);
+	    return res.send({"error":"DB error"});
+	}
+    }
+
+    return res.send("auth invalid")
+}
+
+var newUser = async (req, res) => {
+
+    try{
+	var q = await db.query(SqlString.format("SELECT * FROM invitelinks WHERE id=?", [parseInt("0x"+req.query.uid)]));
+	if(q.length < 1)
+	    res.render("newuser", {"nonce": false})
+	//there should be 1 and only 1 result if the nonce exists, no need to check the actual value, SQL query already does that
+	else
+	    res.render("newuser", {"nonce": req.query.uid});
+    } catch (err){
+	
+    }
+}
+
+var newUserData = async (req, res) => {
+    res.setHeader("content-type", "text/json");
+    
+    if(!req.body.nonce) return res.send({"error":{"type": "System Error", "msg":"Your link is invalid"}})
+
+    //checks nonce
+    try{
+	var q = await db.query(SqlString.format("SELECT * FROM invitelinks WHERE id=?", [parseInt("0x"+req.body.nonce)]));
+	if(q.length < 1) return res.send({"error":{"type": "System Error", "msg":"Your link is invalid"}}) //there should be 1 and only 1 result if the nonce exists, no need to check the actual value, SQL query already does that
+	
+	var expiry = new Date(new Date(q[0].date).valueOf());
+	expiry.setDate(expiry.getDate() + 30);	  
+	
+	if(q[0].id != parseInt("0x"+req.body.nonce) || Date() > expiry)
+	    return res.send({"error":{"type": "System Error", "msg":"Your has expired"}});
+	
+    } catch (err){
+	return res.send({"error":{"type": "System Error", "msg":"DB error"}});
+    }
+	
+
+    //username validation
+    if(!req.body.user)
+	return res.send({"error": {"type": "Username", "msg":"Please add username"}});
+    
+    //pw validation
+    if(req.body.pass != req.body.passCheck || req.body.pass == "")
+	return res.send({"error":{"type":"Password", "msg":req.body.pass ? "Passwords don't match" : "Invalid password"}});
+    
+    return res.send({"success":"success"});
+					 
 }
 
 exports.quoteGen = quoteGen;
@@ -320,3 +406,7 @@ exports.loginData = loginData;
 exports.admin = admin;
 exports.adminLogin = adminLogin;
 exports.adminLoginData = adminLoginData;
+exports.adminDashData = adminDashData;
+exports.generateUserLink = generateUserLink;
+exports.newUser = newUser;
+exports.newUserData = newUserData;
