@@ -2,11 +2,6 @@ $(document).ready(function(){
     $("#loginSpinner").hide();
 });
     
-
-$("#btn").click(function(){
-    loginSend();
-});
-
 $(document).on("keydown", function(event){
     if(event.which == 13){
 	loginSend();
@@ -23,9 +18,8 @@ function loginSend(){
 	   },
 	   function(data, status){
 	       $("#loginSpinner").hide();	     
-	       if(data == "verified"){
-		   console.log('erm');
-		   //window.location.replace("/admin");
+	       if(data == "verified"){		   
+		   window.location.replace("/admin");
 	       }else{
 		   $("#responseArea").text("Incorrect username/password combination");
 		   $("#pwField").addClass("is-invalid");

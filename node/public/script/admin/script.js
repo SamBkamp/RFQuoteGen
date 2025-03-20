@@ -1,8 +1,7 @@
 $( document ).ready(function(){
 
-    $.post("data.php",
-	   {
-	       auth: Cookies.get("userauth"),
+    $.post("/admin/get-users",
+	   {	       
 	       data: "users"
 	   },
 	   function(data, status){
@@ -52,12 +51,12 @@ $("#usersTab").click(function(){
 
 function displayUsers(data, status){
     var info = "<table class='table table-striped table-dark table-responsive text-center'><tr><th>Email</th><th>date joined</th><th>privilege status</th><th></th></tr>";
-    data = JSON.parse(data);
     
     for (const key in data) {
-	userData = data[key].split(",");
-	info = info + "<tr><td>" + key + "</td>";   
-	info = info + "<td>" + userData[0] + "</td><td>"+userData[1]+"</td><td><button type=\"button\" onclick=\"delUser("+userData[2]+")\"class=\"btn btn-outline-danger\">Delete User</button></td></tr>";
+	var user = data[key];
+	var date = new Date(user.date);
+	info = info + "<tr><td>" + user.email + "</td>";   
+	info = info + "<td>" + `${date.getFullYear()}/${date.getMonth()+1}/${date.getDate()}` + "</td><td>"+ user.privilege +"</td><td><button type=\"button\" onclick=\"delUser("+ user.id +")\"class=\"btn btn-outline-danger\">Delete User</button></td></tr>";
     }
     info = info + "</table>";
     $("#responseTable").html(info);
@@ -66,7 +65,6 @@ function displayUsers(data, status){
 
 function displayProd(data, status){
     var info = "<table class='table table-striped table-dark table-responsive text-center'><tr><th>name</th><th>multiplier</th><th>constant</th><th></th></tr>";
-    data = JSON.parse(data);
     
     for (const key in data) {
 	userData = data[key].split(",");
@@ -102,10 +100,8 @@ function linkCreate(){
     
     var role = $("#inputGroupSelect01").val();
     if(role == "1" || role == "2" || role == "3"){
-	$.post("data.php",
-	   {
-	       auth: Cookies.get("userauth"),
-	       data: "invUser",
+	$.post("/admin/generate-user-link",
+	   {	       
 	       role: role
 	   },
 	       function(data, status){
