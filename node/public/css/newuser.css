@@ -1,0 +1,12 @@
+#loginCard{
+    width: 30%;
+    margin-top: 27.5vh;
+}
+
+#generalFeedback{
+    display: none;
+    width: 100%;
+    margin-top: .25rem;
+    font-size: 1.0em;
+    color: var(--bs-form-invalid-color);
+}
