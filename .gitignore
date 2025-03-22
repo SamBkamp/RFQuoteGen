@@ -2,6 +2,7 @@ uploadCode.sh
 **~
 node/node_modules
 env
+node/package-lock.json
 db/RedFin/*
 db/aria_log_control
 db/ddl_recovery-backup.log

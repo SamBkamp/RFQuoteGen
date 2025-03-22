@@ -1,6 +1,10 @@
+//middleware
 var mysql = require('mysql');
 var express = require('express');
 var cookieParser = require('cookie-parser');
+var session = require('express-session')
+
+//controllers
 var db = require("./controllers/db.js");
 var routing = require("./router.js");
 
@@ -10,6 +14,7 @@ app.use(express.static(__dirname + '/public'));
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
+app.use(session({ secret: 'keyboard cat', cookie: { maxAge: 60000 }}));
 app.use("/", routing);
 
 const port = 81;
